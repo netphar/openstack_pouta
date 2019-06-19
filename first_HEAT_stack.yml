@@ -1,0 +1,54 @@
+heat_template_version: 2016-10-14
+
+description: https://docs.openstack.org/heat/newton/template_guide/basic_resources.html
+
+resources:
+
+  # this create a floating ip 
+  floating_ip:
+    type: OS::Nova::FloatingIP
+    properties:
+      pool: public
+
+  # this associates security groups to the port
+  instance_port:
+    type: OS::Neutron::Port
+    properties:
+      network: project_2000774
+      security_groups:
+        - default
+        - SSH
+        - Jupyter
+
+  # this creates a key-pair
+  my_key:
+    type: OS::Nova::KeyPair
+    properties:
+      save_private_key: true
+      name: my_key  
+
+  default_instance:
+    # this creates the actual instance
+    type: OS::Nova::Server
+    properties:
+      key_name: { get_resource: my_key }
+      image: Ubuntu-16.04
+      flavor: standard.small
+      networks:
+        - port: { get_resource: instance_port }
+#        - network: private
+  
+  association:
+    # this associates floating ip with the created instance
+    type: OS::Nova::FloatingIPAssociation
+    properties:
+      floating_ip: { get_resource: floating_ip }
+      server_id: { get_resource: default_instance }
+
+outputs:
+  private_key:
+    description: Private key
+    value: { get_attr: [ my_key, private_key ] }
+  instance_ip:
+    description: network specs
+    value: { get_attr: [default_instance, networks] }
