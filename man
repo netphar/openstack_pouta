@@ -1,0 +1,220 @@
+CSC workings
+
+practical deep learning on CSC
+https://drive.google.com/drive/u/0/folders/1dmV6q0RmAABPWv_t-nRdVWWQmkmoT7FB
+
+all the guides
+https://research.csc.fi/guides
+
+Docker and DL 
+https://github.com/lext/deep_docker
+
+check which projects are present for a given user
+https://sui.csc.fi/group/sui/my-projects
+
+https://research.csc.fi/-/mlpython
+list of packages in ML
+
+for GPU-enabled workflows
+ssh taito-gpu.csc.fi -l zagidull
+
+for CPU-enabled workflows
+ssh taito.csc.fi -l zagidull
+
+in order to use the modules
+* check the list of available modules using 
+module av
+* load modules using
+module load python-env/3.6.7-ml
+
+Release floating IPs
+https://cloud.blog.csc.fi/2017/12/floating-ip-management.html?view=magazine
+
+
+command line tool for setting up a computational cluster on csc. 
+Instruction
+conda create --name pouta python=3
+conda source activate pouta
+pip install python-openstackclient
+dl https://pouta.csc.fi/dashboard/project/access_and_security/api_access/openrc/
+mkdir ~/.pouta
+mv https://pouta.csc.fi/dashboard/project/access_and_security/api_access/openrc/ ~/.pouta
+source https://pouta.csc.fi/dashboard/project/access_and_security/api_access/openrc/ (using csc password)
+#create key-pair openstack. Here permission of .pem file had to be changed to 666,
+openstack keypair create test >  ~/.ssh/cpouta_drugcomb_dl-2.pem
+#openstack server create --flavor <flavor> --image <image id> --key-name <key name> <name for machine>, so that would be:
+openstack server create --flavor 0143b0d1-4788-4d1f-aa04-4473e4a7c2a6 --image 3a9aad67-0f9c-4493-b574-17fe28d40afc --key-name test test /// this is for cirros
+| 3d1f8655-f0c4-4afb-98fa-e35c764da03d for gpu.1.4gpu flavor
+| aaf7d3b1-f11b-4cfa-86d9-c6540e5efd06 for standard.xxlarge
+| 767a7022-43bf-4e2e-912e-58f392f5f78e for 16.04 Cuda image 
+
+
+
+#create floating IP
+openstack floating ip create public
+# this adds previously created floating IP to server
+openstack server add floating ip f6d24d1c-c39d-4bfd-952f-373ee7bea182 86.50.169.145 # need server name and floating IP
+# this adds security group called ‘SSH’ to #server
+openstack server add security group f6d24d1c-c39d-4bfd-952f-373ee7bea182 SSH
+
+!!! ALSO NEED TO ADD security group Jupyter
+#cahnge back permissions of the .pem key
+chmod 600 ~/.ssh/cpouta_drugcomb_dl-2.pem
+#ssh to created box. No need for password, since we are using a generated key
+ssh cirros@86.50.169.227 -i ~/.ssh/cpouta_drugcomb_dl-2.pem
+#delete server 
+openstack server delete f6d24d1c-c39d-4bfd-952f-373ee7bea182
+#delete floating ip
+openstack floating ip delete 86.50.169.145
+
+
+
+
+
+taito shell
+https://research.csc.fi/taito-shell-user-guide is an interactive always active linux-server like shell with up to 4 cores and 128 Gb of memory. But memory can be oversubscribed, so if the node runs out of memory then you also run out
+
+man cPouta shell
+https://research.csc.fi/pouta-client-usage
+delete floating IP (https://docs.openstack.org/python-openstackclient/pike/cli/command-objects/floating-ip.html)
+openstack floating ip delete <floating-ip> [<floating-ip> ...]
+
+
+
+CSC general file system
+https://research.csc.fi/taito-disk-environment
+there is access to 2 Tb of storage in HPC archive. The HPC-archive server is used through iRODS commands, and it is not mounted to Taito as a directory. It is directly bound to the CSC user accounts and requires no special application
+
+cPouta storage
+https://research.csc.fi/pouta-storage Computing projects, that have access to cPouta cloud resources, can use the Pouta Object Storage service provided by CSC. This data storage service can be used to store and share up to 1 TB of datasets so that the data can be accessed from anywhere: from a virtual machine in cPouta, Sisu and Taito servers, your local computer or a third party web server elsewhere. Y
+
+Persistent volumes
+https://research.csc.fi/pouta-persistent-volumes
+Q how are they backed up?
+as the name says, stay even when cPouta instances are removed. They can be attached to or detached from virtual machines while they are running.
+
+cPouta Object storage
+https://research.csc.fi/pouta-object-storage
+Object storage is a cloud storage service, where you can store and retrieve data over HTTPS. This is not tied to any individual virtual machines. The data can be made accessible from anywhere, inside and outside cPouta. Like amazon S3
+Q: how are the objects backed up? 
+A: There are three copies of the data you store in the service
+they are accessible as URL, URLs to objects can be in DNS format: https://containername.object.pouta.csc.fi 
+they have no subfolders, but “/“ can be used as pseudofolders
+
+interoperability of cPouta
+Since the data in object store is available from anywhere, you can access the data from both the CSC clusters and cloud services. This makes the object store a good place to store datasets and intermediate and final results in cases where your workflow requires the use of both Taito and cPouta, for example.
+
+limitations You can only upload or download data to the service. Modifying a dataset will require replacing the whole dataset with an updated version. https://research.csc.fi/csc-guide-object-storage
+more detailed info can be found here https://research.csc.fi/pouta-using-object-storage
+
+usecases
+store datasets 
+store static datsets (like models?) 
+eg https://homepage-in-object-storage.object.pouta.csc.fi/index.html
+or backups
+
+costs:
+some BU are consumed for storage. See https://research.csc.fi/pouta-accounting
+but CSC does not charge for object storage network transfers or API calls.
+
+Resource	Cost
+Virtual machines	See flavors page
+Storage volumes	3,5 BU / TiB hour
+Object storage	3,5 BU / TiB hour
+Floating IPs	0,2 BU / hour
+
+HEAT
+need to install heat client for openstack to be able to spawn stacks on Pouta via command line
+pip install python-heatclient
+to be able to circumvent
+(pouta) zagidull@lm8-945-003:~/Desktop$ openstack stack create -t ~/Desktop/first_HEAT_stack.yml test_stack
+openstack: 'stack create -t /Users/zagidull/Desktop/first_HEAT_stack.yml test_stack' is not an openstack command. See 'openstack --help'.
+
+to create a stack do
+(pouta) zagidull@lm8-945-003:~/Desktop$ openstack stack create -t ~/Desktop/first_HEAT_stack.yml testing
+first_HEAT_stack.yml
+heat_template_version: 2016-10-14
+
+description: https://docs.openstack.org/heat/newton/template_guide/basic_resources.html
+
+resources:
+
+  # this create a floating ip 
+  floating_ip:
+    type: OS::Nova::FloatingIP
+    properties:
+      pool: public
+
+  # this associates security groups to the port
+  instance_port:
+    type: OS::Neutron::Port
+    properties:
+      network: project_2000774
+      security_groups:
+        - default
+        - SSH
+        - Jupyter
+
+  # this creates a key-pair
+  my_key:
+    type: OS::Nova::KeyPair
+    properties:
+      save_private_key: true
+      name: my_key  
+
+  default_instance:
+    # this creates the actual instance
+    type: OS::Nova::Server
+    properties:
+      key_name: { get_resource: my_key }
+      image: Ubuntu-16.04
+      flavor: standard.small
+      networks:
+        - port: { get_resource: instance_port }
+#        - network: private
+  
+  association:
+    # this associates floating ip with the created instance
+    type: OS::Nova::FloatingIPAssociation
+    properties:
+      floating_ip: { get_resource: floating_ip }
+      server_id: { get_resource: default_instance }
+
+outputs:
+  private_key:
+    description: Private key
+    value: { get_attr: [ my_key, private_key ] }
+  instance_ip:
+    description: network specs
+    value: { get_attr: [default_instance, networks] }
+
+this shows the output of the stack (here “testing” is the name)
+openstack stack show testing 
+
+shows console output 
+openstack console log show 86659125-40f5-43d9-9733-d83c15553c17
+
+deletes a stack (here “testing” is a name)
+openstack stack delete testing
+
+shows stack events
+openstack stack event list testing
+
+###
+to solve the problem of ssh connections. I generated a new keypair with
+openstack keypair create HEAT_KEY > ~/.ssh/HEAT_KEY.private
+which means i can use public key HEAT_KEY to connect to instances
+
+NB: 
+https://help.github.com/en/articles/adding-an-existing-project-to-github-using-the-command-line
+git
+git init
+Initialized empty Git repository in /Users/zagidull/Documents/fimm_files/openstack_csc/.git/
+zagidull@dsl-hkibng32-54fb5e-169:~/Documents/fimm_files/openstack_csc$ git config --local user.name 'netphar'
+zagidull@dsl-hkibng32-54fb5e-169:~/Documents/fimm_files/openstack_csc$ git config --local user.email forfimm2018@gmail.com
+zagidull@dsl-hkibng32-54fb5e-169:~/Documents/fimm_files/openstack_csc$ git config --local credential.username netphar
+git remote add origin https://github.com/netphar/openstack_pouta.git
+zagidull@dsl-hkibng32-54fb5e-169:~/Documents/fimm_files/openstack_csc$ git remote -v
+origin	https://github.com/netphar/openstack_pouta.git (fetch)
+origin	https://github.com/netphar/openstack_pouta.git (push)
+zagidull@dsl-hkibng32-54fb5e-169:~/Documents/fimm_files/openstack_csc$ git push -u origin master

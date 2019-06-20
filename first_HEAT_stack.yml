@@ -2,6 +2,12 @@ heat_template_version: 2016-10-14
 
 description: https://docs.openstack.org/heat/newton/template_guide/basic_resources.html
 
+parameters:
+  key_name:
+    type: string
+    default: HEAT_KEY
+    description: Name of an existing key pair to use for the instance
+
 resources:
 
   # this create a floating ip 
@@ -21,22 +27,30 @@ resources:
         - Jupyter
 
   # this creates a key-pair
-  my_key:
-    type: OS::Nova::KeyPair
-    properties:
-      save_private_key: true
-      name: my_key  
+  #my_key:
+  #  type: OS::Nova::KeyPair
+  #  properties:
+  #    save_private_key: true
+  #    name: my_key  
 
   default_instance:
     # this creates the actual instance
     type: OS::Nova::Server
     properties:
-      key_name: { get_resource: my_key }
+      key_name: { get_param: key_name }
       image: Ubuntu-16.04
       flavor: standard.small
       networks:
         - port: { get_resource: instance_port }
 #        - network: private
+#below script exectus after startup
+#      user_data:
+#        str_replace:
+#          template: |
+#            #!/bin/bash
+#            echo "$FOO"
+#          params:
+#            FOO: { get_attr: [ my_key, private_key ] }
   
   association:
     # this associates floating ip with the created instance
@@ -46,9 +60,10 @@ resources:
       server_id: { get_resource: default_instance }
 
 outputs:
-  private_key:
-    description: Private key
-    value: { get_attr: [ my_key, private_key ] }
+#  private_key:
+#    description: Private key
+#    value: { get_attr: [ my_key, private_key ] }
   instance_ip:
     description: network specs
     value: { get_attr: [default_instance, networks] }
+
