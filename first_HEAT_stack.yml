@@ -10,6 +10,12 @@ parameters:
 
 resources:
 
+  # this creates a new volume
+  new_vol:
+    type: OS::Cinder::Volume
+    properties:
+      size: 100
+
   # this create a floating ip 
   floating_ip:
     type: OS::Nova::FloatingIP
@@ -51,6 +57,19 @@ resources:
 #            echo "$FOO"
 #          params:
 #            FOO: { get_attr: [ my_key, private_key ] }
+
+  # this attaches newly created volumes to the instance. Make sure that volume_attachment things are called differently
+  volume_attachment_new:
+    type: OS::Cinder::VolumeAttachment
+    properties:
+      volume_id: { get_resource: new_vol }
+      instance_uuid: { get_resource: default_instance }
+
+  volume_attachment_old:
+    type: OS::Cinder::VolumeAttachment
+    properties:
+      volume_id: 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
+      instance_uuid: { get_resource: default_instance }
   
   association:
     # this associates floating ip with the created instance

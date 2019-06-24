@@ -117,11 +117,11 @@ costs:
 some BU are consumed for storage. See https://research.csc.fi/pouta-accounting
 but CSC does not charge for object storage network transfers or API calls.
 
-Resource	Cost
-Virtual machines	See flavors page
-Storage volumes	3,5 BU / TiB hour
-Object storage	3,5 BU / TiB hour
-Floating IPs	0,2 BU / hour
+Resource  Cost
+Virtual machines  See flavors page
+Storage volumes 3,5 BU / TiB hour
+Object storage  3,5 BU / TiB hour
+Floating IPs  0,2 BU / hour
 
 HEAT
 need to install heat client for openstack to be able to spawn stacks on Pouta via command line
@@ -205,6 +205,39 @@ to solve the problem of ssh connections. I generated a new keypair with
 openstack keypair create HEAT_KEY > ~/.ssh/HEAT_KEY.private
 which means i can use public key HEAT_KEY to connect to instances
 
+How about we attach volumes then. These volumes would then be automounted and contain all the necessary datasets (make an automatic import from drugcomb)
+Volumes can be created either from the web interface or using command line tools
+openstack volume create --description "<description>" --size <size> <name>
+openstack volume list
+
+to add the volume execute the following
+openstack server add volume <virtual machine> <volume>
+
+the first time you are using an existing volume you gotta format it and initialize it
+so ssh to your box, attach the volume using commands above. Then
+sudo parted -l #to find the ID of your volume
+sudo mkfs.ext4 /dev/vdb #format the volume to ext4. Done ony on init of the volume
+mkdir -p /media/volume #creates a mount folder 
+sudo mount /dev/sdb /media/volume #actual mount
+
+need to remember to unmount the volume before shutting down the instance
+sudo -umount /dev/vdb
+
+to auto-mount persistent volume add the following line to fstab
+sudo sh -c ‘echo "/dev/vdb     /media/volume    xfs    defaults,nofail    0    2" >> /etc/fstab' 
+
+to test fstab file, execute
+sudo mount -fav
+
+to scp the file. Create the folder on the server
+sudo mkdir %%name && sudo chown -R $USER %%name
+
+from local machine
+scp -i ~/.ssh/HEAT_key.private %%file cloud-user@%%floating-ip:/location/from/previous/command
+
+
+
+
 NB: 
 https://help.github.com/en/articles/adding-an-existing-project-to-github-using-the-command-line
 git
@@ -215,6 +248,21 @@ zagidull@dsl-hkibng32-54fb5e-169:~/Documents/fimm_files/openstack_csc$ git confi
 zagidull@dsl-hkibng32-54fb5e-169:~/Documents/fimm_files/openstack_csc$ git config --local credential.username netphar
 git remote add origin https://github.com/netphar/openstack_pouta.git
 zagidull@dsl-hkibng32-54fb5e-169:~/Documents/fimm_files/openstack_csc$ git remote -v
-origin	https://github.com/netphar/openstack_pouta.git (fetch)
-origin	https://github.com/netphar/openstack_pouta.git (push)
+origin  https://github.com/netphar/openstack_pouta.git (fetch)
+origin  https://github.com/netphar/openstack_pouta.git (push)
 zagidull@dsl-hkibng32-54fb5e-169:~/Documents/fimm_files/openstack_csc$ git push -u origin master
+
+
+for how to start docker on openstack
+https://hostadvice.com/how-to/how-to-deploy-docker-containers-with-openstack-heat/ using fedora image
+https://github.com/MarouenMechtri/Docker-containers-deployment-with-OpenStack-Heat
+https://blogs.rdoproject.org/2014/07/multi-tenant-docker-with-openstack-heat/
+https://hostadvice.com/how-to/how-to-deploy-docker-containers-with-openstack-heat/
+
+trains
+https://github.com/allegroai/trains-server
+https://github.com/allegroai/trains/issues
+https://github.com/IDSIA/sacred
+
+https://github.com/iterative/dvc
+DVC is more focused on data processing and on versioning data pipelines and their steps. In my use-case, we were a team working on a dataset: some were responsible for preprocessing the dataset for downstream use, some were doing an in-depth analysis of some of the features, some were responsible for more general feature extraction, some were doing overall data analysis and training models. These tasks have a natural precedence, but it's still possible to work on them in parallel. Say you have a first version of the preprocessed dataset, then the downstream tasks can start iterating on that version, while the preprocessing itself can be improved and updated (and informed by the downstream tasks themselves). The thing with DVC is that it makes this workflow quite straight-forward: it knows which steps/files/scripts depend on what steps/files/scripts, and it's git-based so it's naturally intertwined with your code versioning.
