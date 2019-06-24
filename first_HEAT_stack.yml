@@ -1,14 +1,44 @@
 heat_template_version: 2016-10-14
 
-description: https://docs.openstack.org/heat/newton/template_guide/basic_resources.html
+description: >
+  https://docs.openstack.org/heat/newton/template_guide/basic_resources.html
+  digest
+  get_attr
+  get_file
+  get_param
+  get_resource
+  list_join
+  map_merge
+  map_replace
+  repeat
+  resource_facade
+  str_replace
+  str_split
+  yaql
+  if
+  equals
+  get_param
+  not
+  and
+  or
 
 parameters:
   key_name:
     type: string
     default: HEAT_KEY
-    description: Name of an existing key pair to use for the instance
+    description: Name of an existing (on the csc) key pair to use for the instance
+  mount_point:
+    type: string
+    default: '/dev/vdb'
+    description: whatever
 
 resources:
+
+        
+# sudo mkfs.ext4 ${some_input}
+# sudo mkdir -p /media/volume
+# sudo mount ${some_input} /media/volume
+# sudo mkdir -p /media/volume/IT_WORKED && sudo chown -R $USER /media/volume/IT_WORKED
 
   # this creates a new volume
   new_vol:
@@ -57,6 +87,33 @@ resources:
 #            echo "$FOO"
 #          params:
 #            FOO: { get_attr: [ my_key, private_key ] }
+      user_data_format: RAW
+      user_data:
+        # https://docs.openstack.org/heat/newton/template_guide/hot_spec.html#str-replace
+        # https://webcache.googleusercontent.com/search?q=cache:IVrJbDeZ344J:https://www.cowley.tech/blog/2015/05/05/identify-and-mounting-cinder-volumes-in-openstack-heat/+&cd=1&hl=en&ct=clnk&gl=fi&client=safari
+        str_replace:
+          template: |
+            #cloud-config
+            write_files:
+              - content: |
+                  #!/bin/bash
+                  voldata_id="%voldata_id%"
+                  voldata_dev="/dev/disk/by-id/virtio-$(echo ${voldata_id} | cut -c -20)"
+                  mkfs.ext4 ${voldata_dev}               
+                  mkdir -p /media/volume
+                  mount voldata_dev /media/volume
+                  mkdir -p /media/volume1
+                  voldata_id1="%voldata_id1%"
+                  voldata_dev1="/dev/disk/by-id/virtio-$(echo ${voldata_id1} | cut -c -20)"
+                  mount voldata_dev1 /media/volume1
+                path: /tmp/format-disks
+                permissions: '0700'
+            runcmd:
+              - /tmp/format-disks            
+          params:
+            "%voldata_id%": { get_resource: new_vol }
+            "%voldata_id1%": 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
+
 
   # this attaches newly created volumes to the instance. Make sure that volume_attachment things are called differently
   volume_attachment_new:
@@ -70,6 +127,8 @@ resources:
     properties:
       volume_id: 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
       instance_uuid: { get_resource: default_instance }
+#      mountpoint: /dev/vdc # mountpoint does not work. It assigns it at random
+
   
   association:
     # this associates floating ip with the created instance
@@ -79,10 +138,10 @@ resources:
       server_id: { get_resource: default_instance }
 
 outputs:
-#  private_key:
+#  private_key: 
 #    description: Private key
 #    value: { get_attr: [ my_key, private_key ] }
   instance_ip:
-    description: network specs
-    value: { get_attr: [default_instance, networks] }
+    description: Floating IP to be used for ssh'ing to the box
+    value: { get_attr: [default_instance, networks, project_2000774, 1] }
 
