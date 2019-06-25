@@ -21,16 +21,64 @@ description: >
   not
   and
   or
+  ToDo: add dependecy in imag/flavor, such that we can start the CUDA version of Ubuntu-16.04 only when we have GPU enabled instance
+  the list of Docker images comes from: https://jupyter-docker-stacks.readthedocs.io/en/latest/using/selecting.html#jupyter-datascience-notebook
 
 parameters:
   key_name:
     type: string
     default: HEAT_KEY
     description: Name of an existing (on the csc) key pair to use for the instance
-  mount_point:
+  token:
     type: string
-    default: '/dev/vdb'
-    description: whatever
+    default: 'drugcomb-interactive'
+    description: Jupyer token string, which can be used to access the container
+  flavor:
+    type: string
+    default: standard.large
+    constraints: 
+      - allowed_values:
+        - standard.tiny
+        - standard.small
+        - standard.medium
+        - standard.large
+        - standard.xlarge
+        - standard.xxlarge
+        - gpu.1.1gpu
+        - gpu.1.2gpu
+        - hpc-gen2.24core
+        - hpc-gen2.48core
+        - hpc.4.5core
+        - hpc.4.20core
+        - hpc.4.10core
+        - hpc.4.40core
+        - io.70GB
+        - io.160GB
+        - io.340GB
+        - io.700GB
+
+  image:
+    type: string
+    default: Ubuntu-16.04
+    constraints: 
+      - allowed_values:
+        - Ubuntu-16.04
+        - Ubuntu-16.04-Cuda
+        - cirros
+  notebook:
+    description: available are here https://jupyter-docker-stacks.readthedocs.io/en/latest/using/selecting.html#jupyter-datascience-notebook
+    type: string
+    default: "jupyter/base-notebook"
+    constraints:
+      - allowed_values:
+        - jupyter/base-notebook
+        - jupyter/minimal-notebook
+        - jupyter/r-notebook
+        - jupyter/scipy-notebook
+        - jupyter/datascience-notebook
+
+
+
 
 resources:
 
@@ -44,7 +92,7 @@ resources:
   new_vol:
     type: OS::Cinder::Volume
     properties:
-      size: 10
+      size: 200
 
   # this create a floating ip 
   floating_ip:
@@ -74,31 +122,37 @@ resources:
     type: OS::Nova::Server
     properties:
       key_name: { get_param: key_name }
-      image: Ubuntu-16.04
-      flavor: standard.small
+      image: { get_param: image}
+      flavor: { get_param: flavor }
       networks:
         - port: { get_resource: instance_port }
       user_data_format: RAW
       user_data:
         # https://docs.openstack.org/heat/newton/template_guide/hot_spec.html#str-replace
         # https://webcache.googleusercontent.com/search?q=cache:IVrJbDeZ344J:https://www.cowley.tech/blog/2015/05/05/identify-and-mounting-cinder-volumes-in-openstack-heat/+&cd=1&hl=en&ct=clnk&gl=fi&client=safari
+        # -e option for passwords obtained from https://hub.docker.com/r/vhtec/jupyter-docker/ and from https://blog.ouseful.info/2019/02/05/on-not-faffing-around-with-jupyter-docker-container-auth-tokens/
         str_replace:
           template: |
             #cloud-config
             write_files:
               - content: |
                   #!/bin/bash
+                  set -xv
                   voldata_id="%voldata_id%"
                   voldata_dev="/dev/disk/by-id/virtio-$(echo ${voldata_id} | cut -c -20)"
                   mkfs.ext4 ${voldata_dev}               
-                  mkdir -pv /media/volume
-                  echo "${voldata_dev}"
-                  sleep 1
-                  mount ${voldata_dev} /media/volume
-                  mkdir -pv /media/volume1
+                  mkdir -pv /media/work
+                  mount ${voldata_dev} /media/work
+                  mkdir -pv /media/input
                   voldata_id1="%voldata_id1%"
                   voldata_dev1="/dev/disk/by-id/virtio-$(echo ${voldata_id1} | cut -c -20)"
-                  mount ${voldata_dev1} /media/volume1
+                  mount ${voldata_dev1} /media/input
+                  curl -fsSL https://get.docker.com -o get-docker.sh
+                  sh get-docker.sh
+                  wait
+                  TOKEN="%token%"
+                  NOTEBOOK="%notebook%"
+                  sudo docker run --rm -p 8888:8888 -e JUPYTER_ENABLE_LAB=yes -v /media/work:/home/jovyan/work -v /media/input:/home/jovyan/input -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
                 path: /tmp/format-disks
                 permissions: '0700'
             runcmd:
@@ -106,6 +160,10 @@ resources:
           params:
             "%voldata_id%": { get_resource: new_vol }
             "%voldata_id1%": 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
+            "%token%": { get_param: token }
+            "%notebook%": { get_param: notebook }
+
+
 
 
   # this attaches newly created volumes to the instance. Make sure that volume_attachment things are called differently
