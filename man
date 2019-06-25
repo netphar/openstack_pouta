@@ -235,7 +235,38 @@ sudo mkdir %%name && sudo chown -R $USER %%name
 from local machine
 scp -i ~/.ssh/HEAT_key.private %%file cloud-user@%%floating-ip:/location/from/previous/command
 
+to update the stack
+openstack stack update -t first_HEAT_stack.yml %%stack_name
 
+this executes scripts via cloud-init
+user_data_format: RAW
+      user_data:
+        # https://docs.openstack.org/heat/newton/template_guide/hot_spec.html#str-replace
+        # https://webcache.googleusercontent.com/search?q=cache:IVrJbDeZ344J:https://www.cowley.tech/blog/2015/05/05/identify-and-mounting-cinder-volumes-in-openstack-heat/+&cd=1&hl=en&ct=clnk&gl=fi&client=safari
+        str_replace:
+          template: |
+            #cloud-config
+            write_files:
+              - content: |
+                  #!/bin/bash
+                  voldata_id="%voldata_id%"
+                  voldata_dev="/dev/disk/by-id/virtio-$(echo ${voldata_id} | cut -c -20)"
+                  mkfs.ext4 ${voldata_dev}               
+                  mkdir -pv /media/volume
+                  echo "${voldata_dev}"
+                  sleep 1
+                  mount ${voldata_dev} /media/volume
+                  mkdir -pv /media/volume1
+                  voldata_id1="%voldata_id1%"
+                  voldata_dev1="/dev/disk/by-id/virtio-$(echo ${voldata_id1} | cut -c -20)"
+                  mount ${voldata_dev1} /media/volume1
+                path: /tmp/format-disks
+                permissions: '0700'
+            runcmd:
+              - /tmp/format-disks            
+          params:
+            "%voldata_id%": { get_resource: new_vol }
+            "%voldata_id1%": 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
 
 
 NB: 

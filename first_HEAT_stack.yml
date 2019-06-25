@@ -44,7 +44,7 @@ resources:
   new_vol:
     type: OS::Cinder::Volume
     properties:
-      size: 100
+      size: 10
 
   # this create a floating ip 
   floating_ip:
@@ -78,15 +78,6 @@ resources:
       flavor: standard.small
       networks:
         - port: { get_resource: instance_port }
-#        - network: private
-#below script exectus after startup
-#      user_data:
-#        str_replace:
-#          template: |
-#            #!/bin/bash
-#            echo "$FOO"
-#          params:
-#            FOO: { get_attr: [ my_key, private_key ] }
       user_data_format: RAW
       user_data:
         # https://docs.openstack.org/heat/newton/template_guide/hot_spec.html#str-replace
@@ -100,12 +91,14 @@ resources:
                   voldata_id="%voldata_id%"
                   voldata_dev="/dev/disk/by-id/virtio-$(echo ${voldata_id} | cut -c -20)"
                   mkfs.ext4 ${voldata_dev}               
-                  mkdir -p /media/volume
-                  mount voldata_dev /media/volume
-                  mkdir -p /media/volume1
+                  mkdir -pv /media/volume
+                  echo "${voldata_dev}"
+                  sleep 1
+                  mount ${voldata_dev} /media/volume
+                  mkdir -pv /media/volume1
                   voldata_id1="%voldata_id1%"
                   voldata_dev1="/dev/disk/by-id/virtio-$(echo ${voldata_id1} | cut -c -20)"
-                  mount voldata_dev1 /media/volume1
+                  mount ${voldata_dev1} /media/volume1
                 path: /tmp/format-disks
                 permissions: '0700'
             runcmd:
@@ -128,6 +121,7 @@ resources:
       volume_id: 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
       instance_uuid: { get_resource: default_instance }
 #      mountpoint: /dev/vdc # mountpoint does not work. It assigns it at random
+# https://ask.openstack.org/en/question/81702/nova-volume-attach-with-device-option-not-honoring-given-device-name/
 
   
   association:
