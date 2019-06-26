@@ -341,6 +341,9 @@ print(psutil.virtual_memory())  # physical memory usage
 print('memory % used:', psutil.virtual_memory()[2])
 above gives you the mem and cpu usage in the machine
 
+to update on user permissions of the mounted folders
+chmod a+rwx -R /media/work
+
 for how to start docker on openstack
 https://hostadvice.com/how-to/how-to-deploy-docker-containers-with-openstack-heat/ using fedora image
 https://github.com/MarouenMechtri/Docker-containers-deployment-with-OpenStack-Heat

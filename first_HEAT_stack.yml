@@ -149,10 +149,12 @@ resources:
                   mkfs.ext4 ${voldata_dev}               
                   mkdir -pv /media/work
                   mount ${voldata_dev} /media/work
+                  chmod a+rwx -R /media/work
                   mkdir -pv /media/input
                   voldata_id1="%voldata_id1%"
                   voldata_dev1="/dev/disk/by-id/virtio-$(echo ${voldata_id1} | cut -c -20)"
                   mount ${voldata_dev1} /media/input
+                  chmod a+rwx -R /media/input
                   curl -fsSL https://get.docker.com -o get-docker.sh
                   sh get-docker.sh
                   wait
