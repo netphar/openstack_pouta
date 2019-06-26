@@ -283,6 +283,63 @@ origin  https://github.com/netphar/openstack_pouta.git (fetch)
 origin  https://github.com/netphar/openstack_pouta.git (push)
 zagidull@dsl-hkibng32-54fb5e-169:~/Documents/fimm_files/openstack_csc$ git push -u origin master
 
+in the end I am using the following scripts to spawm the NOVA instance
+  default_instance:
+    # this creates the actual instance
+    type: OS::Nova::Server
+    properties:
+      key_name: { get_param: key_name }
+      image: { get_param: image}
+      flavor: { get_param: flavor }
+      networks:
+        - port: { get_resource: instance_port }
+      user_data_format: RAW
+      user_data:
+        # https://docs.openstack.org/heat/newton/template_guide/hot_spec.html#str-replace
+        # https://webcache.googleusercontent.com/search?q=cache:IVrJbDeZ344J:https://www.cowley.tech/blog/2015/05/05/identify-and-mounting-cinder-volumes-in-openstack-heat/+&cd=1&hl=en&ct=clnk&gl=fi&client=safari
+        # -e option for passwords obtained from https://hub.docker.com/r/vhtec/jupyter-docker/ and from https://blog.ouseful.info/2019/02/05/on-not-faffing-around-with-jupyter-docker-container-auth-tokens/
+        str_replace:
+          template: |
+            #cloud-config
+            write_files:
+              - content: |
+                  #!/bin/bash
+                  set -xv
+                  voldata_id="%voldata_id%"
+                  voldata_dev="/dev/disk/by-id/virtio-$(echo ${voldata_id} | cut -c -20)"
+                  mkfs.ext4 ${voldata_dev}               
+                  mkdir -pv /media/local_storage
+                  mount ${voldata_dev} /media/local_storage
+                  mkdir -pv /media/input_datasets
+                  voldata_id1="%voldata_id1%"
+                  voldata_dev1="/dev/disk/by-id/virtio-$(echo ${voldata_id1} | cut -c -20)"
+                  mount ${voldata_dev1} /media/input_datasets
+                  curl -fsSL https://get.docker.com -o get-docker.sh
+                  sh get-docker.sh
+                  wait
+                  TOKEN="%token%"
+                  NOTEBOOK="%notebook%"
+                  sudo docker run --rm -p 8888:8888 -e JUPYTER_ENABLE_LAB=yes -v /media/local_storage:/home/jovyan/work -v /media/input_datasets:/home/jovyan/input -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
+                path: /tmp/format-disks
+                permissions: '0700'
+            runcmd:
+              - /tmp/format-disks            
+          params:
+            "%voldata_id%": { get_resource: new_vol }
+            "%voldata_id1%": 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
+            "%token%": { get_param: token }
+            "%notebook%": { get_param: notebook }
+
+after switching on the virtual machine with
+openstack stack create R -t first_HEAT_stack.yml --parameter "flavor=standard.xxlarge;notebook=jupyter/r-notebook"
+it is possible to access the notebook and everything. The question comes how to install python packages from within the environment, if the use chooses to do so. Taken from https://jakevdp.github.io/blog/2017/12/05/installing-python-packages-from-jupyter/
+import sys
+!conda install --yes --prefix {sys.prefix} psutil
+import psutil
+print(psutil.cpu_percent())
+print(psutil.virtual_memory())  # physical memory usage
+print('memory % used:', psutil.virtual_memory()[2])
+above gives you the mem and cpu usage in the machine
 
 for how to start docker on openstack
 https://hostadvice.com/how-to/how-to-deploy-docker-containers-with-openstack-heat/ using fedora image
@@ -295,5 +352,20 @@ https://github.com/allegroai/trains-server
 https://github.com/allegroai/trains/issues
 https://github.com/IDSIA/sacred
 
+on how to setup object storage
+https://github.com/CSCfi/notebook-images#optional-transferring-images-to-and-from-object-storage 
+
+ansible demo
+https://github.com/CSCfi/pouta-ansible-demo 
+
+it would be good to use a bastion host  
+
+devstack docker install scripts
+https://github.com/openstack/devstack-plugin-container/tree/master/devstack/lib 
+
 https://github.com/iterative/dvc
 DVC is more focused on data processing and on versioning data pipelines and their steps. In my use-case, we were a team working on a dataset: some were responsible for preprocessing the dataset for downstream use, some were doing an in-depth analysis of some of the features, some were responsible for more general feature extraction, some were doing overall data analysis and training models. These tasks have a natural precedence, but it's still possible to work on them in parallel. Say you have a first version of the preprocessed dataset, then the downstream tasks can start iterating on that version, while the preprocessing itself can be improved and updated (and informed by the downstream tasks themselves). The thing with DVC is that it makes this workflow quite straight-forward: it knows which steps/files/scripts depend on what steps/files/scripts, and it's git-based so it's naturally intertwined with your code versioning.
+
+
+Pebbles on csc (These are step by step instructions on how to launch a Pebbles server on cPouta IaaS cloud)
+https://github.com/CSCfi/pebbles/blob/master/doc/source/how_to_install_on_cpouta.rst

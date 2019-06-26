@@ -76,6 +76,12 @@ parameters:
         - jupyter/r-notebook
         - jupyter/scipy-notebook
         - jupyter/datascience-notebook
+  size:
+    description: size of the volume in Gb to be created for storing data. For now the volume is being destroyed after the stack is destroed. In practice, it would make a lot more sense to save it.
+    type: number
+    default: 50
+    constraints:
+      - range: { min: 1, max: 888}
 
 
 
@@ -92,7 +98,7 @@ resources:
   new_vol:
     type: OS::Cinder::Volume
     properties:
-      size: 200
+      size: { get_param: size }
 
   # this create a floating ip 
   floating_ip:
