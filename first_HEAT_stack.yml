@@ -1,6 +1,7 @@
 heat_template_version: 2016-10-14
 
 description: >
+  more info on ansible cluster deployment -> https://github.com/CSCfi/pouta-ansible-cluster
   https://docs.openstack.org/heat/newton/template_guide/basic_resources.html
   digest
   get_attr
@@ -21,19 +22,24 @@ description: >
   not
   and
   or
-  ToDo: add dependecy in imag/flavor, such that we can start the CUDA version of Ubuntu-16.04 only when we have GPU enabled instance
-  the list of Docker images comes from: https://jupyter-docker-stacks.readthedocs.io/en/latest/using/selecting.html#jupyter-datascience-notebook
+  ToDo: 
+  * add dependecy in image/flavor parameters, e.g. such that when we start the GPU enabled instance, Ubuntu-16.04-Cuda image is used.  
+  * the list of Docker images comes from: https://jupyter-docker-stacks.readthedocs.io/en/latest/using/selecting.html#jupyter-datascience-notebook
+  * it would be nice to choose how to persist the OS::Cinder::Volume that is created upon firing up the instance. Maybe even when being in the instance?
+  * it would be nice to also have a signal sent as an email or message that says when stack is finished creating. Or better yet, when the Jupyter instance goes live | when computations are done.
+  * For cirros images user name for ssh is not cloud-user, but it is cirros or something like that?
 
 parameters:
   key_name:
     type: string
     default: HEAT_KEY
     description: Name of an existing (on the csc) key pair to use for the instance
-  token:
+  jupyter_token:
     type: string
     default: 'drugcomb-interactive'
     description: Jupyer token string, which can be used to access the container
   flavor:
+    description: https://research.csc.fi/pouta-flavours for more info on flavors. io for spark/hadoop. Standard for webstuff and db, as cpu is overcommited (32 physical cores are used to provide more than 32 virtual cores). For computations use hpc flavors. 
     type: string
     default: standard.large
     constraints: 
@@ -77,7 +83,7 @@ parameters:
         - jupyter/scipy-notebook
         - jupyter/datascience-notebook
   size:
-    description: size of the volume in Gb to be created for storing data. For now the volume is being destroyed after the stack is destroed. In practice, it would make a lot more sense to save it.
+    description: size of the volume in Gb to be created for storing data. For now the volume is being destroyed after the stack is destroed. In practice, it would make a lot more sense to be able save it.
     type: number
     default: 50
     constraints:
@@ -137,6 +143,7 @@ resources:
         # https://docs.openstack.org/heat/newton/template_guide/hot_spec.html#str-replace
         # https://webcache.googleusercontent.com/search?q=cache:IVrJbDeZ344J:https://www.cowley.tech/blog/2015/05/05/identify-and-mounting-cinder-volumes-in-openstack-heat/+&cd=1&hl=en&ct=clnk&gl=fi&client=safari
         # -e option for passwords obtained from https://hub.docker.com/r/vhtec/jupyter-docker/ and from https://blog.ouseful.info/2019/02/05/on-not-faffing-around-with-jupyter-docker-container-auth-tokens/
+        # let's have all the external to script variables written out as "%variable%"
         str_replace:
           template: |
             #cloud-config
@@ -168,7 +175,7 @@ resources:
           params:
             "%voldata_id%": { get_resource: new_vol }
             "%voldata_id1%": 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
-            "%token%": { get_param: token }
+            "%token%": { get_param: jupyter_token }
             "%notebook%": { get_param: notebook }
 
 
@@ -182,6 +189,7 @@ resources:
       instance_uuid: { get_resource: default_instance }
 
   volume_attachment_old:
+    description: this should contain input data for whatever calculation to be run from DrugComb
     type: OS::Cinder::VolumeAttachment
     properties:
       volume_id: 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
@@ -204,4 +212,23 @@ outputs:
   instance_ip:
     description: Floating IP to be used for ssh'ing to the box
     value: { get_attr: [default_instance, networks, project_2000774, 1] }
+  ssh_command:
+    description: SSH command for the newly created instance (assuming your key is in ~/.ssh/). The keys are generated using -> openstack keypair create HEAT_KEY > ~/.ssh/HEAT_KEY.private
+
+    value:
+        str_replace:
+            template: ssh cloud-user@host -i ~/.ssh/key.private
+            params:
+                host: { get_attr: [default_instance, networks, project_2000774, 1] }
+                key: { get_param: key_name }
+  web_address:
+    description: Link to access Jupyter instance from the browser.
+
+    value:
+        str_replace:
+            template: http://host:8888/?token=jupyter_token
+            params:
+                host: { get_attr: [default_instance, networks, project_2000774, 1] }
+                jupyter_token: { get_param: jupyter_token }
+
 

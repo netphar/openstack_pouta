@@ -344,6 +344,11 @@ above gives you the mem and cpu usage in the machine
 to update on user permissions of the mounted folders
 chmod a+rwx -R /media/work
 
+we are running docker jupyter using -e variable and are providing a token that can be used to access the notebook
+sudo docker run --rm -p 8888:8888 -e JUPYTER_ENABLE_LAB=yes -v /media/work:/home/jovyan/work -v /media/input:/home/jovyan/input -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
+
+
+
 for how to start docker on openstack
 https://hostadvice.com/how-to/how-to-deploy-docker-containers-with-openstack-heat/ using fedora image
 https://github.com/MarouenMechtri/Docker-containers-deployment-with-OpenStack-Heat
