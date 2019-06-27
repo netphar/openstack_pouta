@@ -347,7 +347,29 @@ chmod a+rwx -R /media/work
 we are running docker jupyter using -e variable and are providing a token that can be used to access the notebook
 sudo docker run --rm -p 8888:8888 -e JUPYTER_ENABLE_LAB=yes -v /media/work:/home/jovyan/work -v /media/input:/home/jovyan/input -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
 
+======================
+== for jing demo =====
+======================
+openstack stack create DEMO -t demo_stakc.yaml
+hpc.4.5core 5 22  80 GB 0 GB  80 GB 4.3 6 (10)
 
+
+
+
+
+remember to format the volume before use:
+openstack server add volume 9e3f6ec7-ccad-4726-8d44-18ad591da5f8 b6f84586-aa6c-4782-9826-99606f284379
+
+
+so the np.mean process when creating bit-wise average array does it a single core operation. That s shitty
+in essence i need to parallelize this:
+for i in range(len(fingerprints)):
+    a = []
+    a = [fingerprints[i],fingerprints]
+    big_matrix[i] = np.mean(a,axis=0)
+    if i%5 == 0:
+        print(big_matrix[0][0][0])
+        break
 
 for how to start docker on openstack
 https://hostadvice.com/how-to/how-to-deploy-docker-containers-with-openstack-heat/ using fedora image

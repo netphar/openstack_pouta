@@ -2,33 +2,6 @@ heat_template_version: 2016-10-14
 
 description: >
   more info on ansible cluster deployment -> https://github.com/CSCfi/pouta-ansible-cluster
-  https://docs.openstack.org/heat/newton/template_guide/basic_resources.html
-  digest
-  get_attr
-  get_file
-  get_param
-  get_resource
-  list_join
-  map_merge
-  map_replace
-  repeat
-  resource_facade
-  str_replace
-  str_split
-  yaql
-  if
-  equals
-  get_param
-  not
-  and
-  or
-  ToDo: 
-  * add dependecy in image/flavor parameters, e.g. such that when we start the GPU enabled instance, Ubuntu-16.04-Cuda image is used.  
-  * the list of Docker images comes from: https://jupyter-docker-stacks.readthedocs.io/en/latest/using/selecting.html#jupyter-datascience-notebook
-  * it would be nice to choose how to persist the OS::Cinder::Volume that is created upon firing up the instance. Maybe even when being in the instance?
-  * it would be nice to also have a signal sent as an email or message that says when stack is finished creating. Or better yet, when the Jupyter instance goes live | when computations are done.
-  * For cirros images user name for ssh is not cloud-user, but it is cirros or something like that?
-  * would be nice to host images on cPouta and create instances from snapshots instead of running the setups from scratch
 
 parameters:
   key_name:
