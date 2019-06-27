@@ -42,7 +42,7 @@ parameters:
   flavor:
     description: https://research.csc.fi/pouta-flavours for more info on flavors. io for spark/hadoop. Standard for webstuff and db, as cpu is overcommited (32 physical cores are used to provide more than 32 virtual cores). For computations use hpc flavors. 
     type: string
-    default: standard.small
+    default: hpc.4.5core
     constraints: 
       - allowed_values:
         - standard.tiny
@@ -75,7 +75,7 @@ parameters:
   notebook:
     description: available are here https://jupyter-docker-stacks.readthedocs.io/en/latest/using/selecting.html#jupyter-datascience-notebook
     type: string
-    default: "jupyter/base-notebook"
+    default: "jupyter/datascience-notebook"
     constraints:
       - allowed_values:
         - jupyter/base-notebook
@@ -83,20 +83,14 @@ parameters:
         - jupyter/r-notebook
         - jupyter/scipy-notebook
         - jupyter/datascience-notebook
-  size:
-    description: size of the volume in Gb to be created for storing data. For now the volume is being destroyed after the stack is destroed, ie it ephemeral. In practice, it would make a lot more sense to be able save it.
-    type: number
-    default: 1
-    constraints:
-      - range: { min: 1, max: 888}
+
   existing_volume:
     description: >
-      attaches an existing volume. Default is 1 Gb file with one music file inside the folder, one txt file and one ipynb notebook.
+      attaches an existing volume. Default is 50 Gb file with RDKit stuff
       Make sure the new volume is formatted before use. 
-      It is also important to unmount the volume before shutting down the instance
-      %insert the commands for formatting a volume here.
+      sudo -umount (output of sudo parted -l)
     type: string
-    default: 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
+    default: b6f84586-aa6c-4782-9826-99606f284379
     constraints:
       - allowed_values:
         - b6f84586-aa6c-4782-9826-99606f284379
@@ -114,10 +108,7 @@ resources:
 # sudo mkdir -p /media/volume/IT_WORKED && sudo chown -R $USER /media/volume/IT_WORKED
 
   # this creates a new volume
-  new_vol:
-    type: OS::Cinder::Volume
-    properties:
-      size: { get_param: size }
+
 
   # this create a floating ip 
   floating_ip:
@@ -164,12 +155,6 @@ resources:
               - content: |
                   #!/bin/bash
                   set -xv
-                  voldata_id="%voldata_id%"
-                  voldata_dev="/dev/disk/by-id/virtio-$(echo ${voldata_id} | cut -c -20)"
-                  mkfs.ext4 ${voldata_dev}               
-                  mkdir -pv /media/work
-                  mount ${voldata_dev} /media/work
-                  chmod a+rwx -R /media/work
                   mkdir -pv /media/input
                   voldata_id1="%voldata_id1%"
                   voldata_dev1="/dev/disk/by-id/virtio-$(echo ${voldata_id1} | cut -c -20)"
@@ -180,13 +165,12 @@ resources:
                   wait
                   TOKEN="%token%"
                   NOTEBOOK="%notebook%"
-                  sudo docker run --rm -p 8888:8888 -e JUPYTER_ENABLE_LAB=yes -v /media/work:/home/jovyan/ephemeralDir -v /media/input:/home/jovyan/persistentDir -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
+                  sudo docker run --rm -p 8888:8888 -e JUPYTER_ENABLE_LAB=yes -v /media/input:/home/jovyan/persistentDir -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
                 path: /tmp/format-disks
                 permissions: '0700'
             runcmd:
               - /tmp/format-disks            
           params:
-            "%voldata_id%": { get_resource: new_vol }
             "%voldata_id1%": { get_param: existing_volume }
             "%token%": { get_param: jupyter_token }
             "%notebook%": { get_param: notebook }
@@ -194,18 +178,12 @@ resources:
 
 
 
-  # this attaches newly created volumes to the instance. Make sure that volume_attachment things are called differently
-  volume_attachment_new:
-    type: OS::Cinder::VolumeAttachment
-    properties:
-      volume_id: { get_resource: new_vol }
-      instance_uuid: { get_resource: default_instance }
 
   volume_attachment_old:
     description: this should contain input data for whatever calculation to be run from DrugComb
     type: OS::Cinder::VolumeAttachment
     properties:
-      volume_id: 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
+      volume_id: { get_param: existing_volume }
       instance_uuid: { get_resource: default_instance }
 #      mountpoint: /dev/vdc # mountpoint does not work. It assigns it at random
 # https://ask.openstack.org/en/question/81702/nova-volume-attach-with-device-option-not-honoring-given-device-name/
