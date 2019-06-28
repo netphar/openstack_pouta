@@ -1,7 +1,7 @@
 heat_template_version: 2016-10-14
 
 description: >
-  more info on ansible cluster deployment -> https://github.com/CSCfi/pouta-ansible-cluster
+  pulls GATK Docker image. Adds "Sensitively detect copy ratio alterations and allelic segments" tutorial and the corresponding data.
 
 parameters:
   key_name:
@@ -48,14 +48,11 @@ parameters:
   notebook:
     description: available are here https://jupyter-docker-stacks.readthedocs.io/en/latest/using/selecting.html#jupyter-datascience-notebook
     type: string
-    default: "jupyter/datascience-notebook"
+    default: "spacecade7/tutorial_11682_11683:gatk4.0.1.1"
     constraints:
       - allowed_values:
-        - jupyter/base-notebook
-        - jupyter/minimal-notebook
-        - jupyter/r-notebook
-        - jupyter/scipy-notebook
-        - jupyter/datascience-notebook
+        - broadinstitute/gatk
+        - spacecade7/tutorial_11682_11683:gatk4.0.1.1
 
   existing_volume:
     description: >
@@ -69,10 +66,23 @@ parameters:
         - b6f84586-aa6c-4782-9826-99606f284379
         - 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
 
+  size:
+    description: size of the volume in Gb to be created for storing data. For now the volume is being destroyed after the stack is destroed, ie it ephemeral. In practice, it would make a lot more sense to be able save it.
+    type: number
+    default: 10
+    constraints:
+      - range: { min: 1, max: 888}
 
 
 
 resources:
+
+
+  # this creates a new volume
+  new_vol:
+    type: OS::Cinder::Volume
+    properties:
+      size: { get_param: size }
 
         
 # sudo mkfs.ext4 ${some_input}
@@ -133,21 +143,32 @@ resources:
                   voldata_dev1="/dev/disk/by-id/virtio-$(echo ${voldata_id1} | cut -c -20)"
                   mount ${voldata_dev1} /media/input
                   chmod a+rwx -R /media/input
+                  mkdir -pv /media/temp
+                  mkfs.ext4 /dev/vdb
+                  mount /dev/vdb /media/temp
+                  chmod a+rwx -R /media/temp
+                  cd /media/temp            
                   curl -fsSL https://get.docker.com -o get-docker.sh
                   sh get-docker.sh
                   wait
-                  TOKEN="%token%"
                   NOTEBOOK="%notebook%"
-                  sudo docker run --rm -p 8888:8888 -e JUPYTER_ENABLE_LAB=yes -v /media/input:/home/jovyan/persistentDir -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
+                  sudo usermod -aG docker $USER
+                  sudo docker pull ${NOTEBOOK}
                 path: /tmp/format-disks
                 permissions: '0700'
             runcmd:
               - /tmp/format-disks            
           params:
-            "%voldata_id1%": { get_resource: existing_volume }
-            "%token%": { get_param: jupyter_token }
+            "%voldata_id1%": { get_param: existing_volume }
+            "%voldata_id%": { get_resource: new_vol }
+
             "%notebook%": { get_param: notebook }
 
+  volume_attachment_new:
+    type: OS::Cinder::VolumeAttachment
+    properties:
+      volume_id: { get_resource: new_vol }
+      instance_uuid: { get_resource: default_instance } 
 
 
 
@@ -185,14 +206,6 @@ outputs:
             params:
                 host: { get_attr: [default_instance, networks, project_2000774, 1] }
                 key: { get_param: key_name }
-  web_address:
-    description: Link to access Jupyter instance from the browser.
 
-    value:
-        str_replace:
-            template: http://host:8888/?token=jupyter_token
-            params:
-                host: { get_attr: [default_instance, networks, project_2000774, 1] }
-                jupyter_token: { get_param: jupyter_token }
 
 
