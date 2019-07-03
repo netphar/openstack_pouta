@@ -15,7 +15,7 @@ parameters:
   flavor:
     description: https://research.csc.fi/pouta-flavours for more info on flavors. io for spark/hadoop. Standard for webstuff and db, as cpu is overcommited (32 physical cores are used to provide more than 32 virtual cores). For computations use hpc flavors. 
     type: string
-    default: hpc.4.5core
+    default: hpc.4.20core
     constraints: 
       - allowed_values:
         - standard.tiny
@@ -69,7 +69,7 @@ parameters:
   size:
     description: size of the volume in Gb to be created for storing data. For now the volume is being destroyed after the stack is destroed, ie it ephemeral. In practice, it would make a lot more sense to be able save it.
     type: number
-    default: 10
+    default: 30
     constraints:
       - range: { min: 1, max: 888}
 
@@ -143,11 +143,13 @@ resources:
                   voldata_dev1="/dev/disk/by-id/virtio-$(echo ${voldata_id1} | cut -c -20)"
                   mount ${voldata_dev1} /media/input
                   chmod a+rwx -R /media/input
+
+                  voldata_id = "%voldata_id%"
+                  voldata_dev="/dev/disk/by-id/virtio-$(echo ${voldata_id} | cut -c -20)"
+                  mkfs.ext4 ${voldata_dev}
                   mkdir -pv /media/temp
-                  mkfs.ext4 /dev/vdb
-                  mount /dev/vdb /media/temp
+                  mount ${voldata_dev} /media/temp
                   chmod a+rwx -R /media/temp
-                  cd /media/temp            
                   curl -fsSL https://get.docker.com -o get-docker.sh
                   sh get-docker.sh
                   wait

@@ -199,7 +199,7 @@ resources:
     type: OS::Cinder::VolumeAttachment
     properties:
       volume_id: { get_resource: new_vol }
-      instance_uuid: { get_resource: default_instance }
+      instance_uuid: { get_resource: default_instance } 
 
   volume_attachment_old:
     description: this should contain input data for whatever calculation to be run from DrugComb

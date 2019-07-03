@@ -1,0 +1,108 @@
+heat_template_version: 2016-10-14
+
+description: >
+  more info on ansible cluster deployment -> https://github.com/CSCfi/pouta-ansible-cluster
+
+parameters:
+  key_name:
+    type: string
+    default: HEAT_KEY
+    description: Name of an existing (on the csc) key pair to use for the instance
+  flavor:
+    description: https://research.csc.fi/pouta-flavours for more info on flavors. io for spark/hadoop. Standard for webstuff and db, as cpu is overcommited (32 physical cores are used to provide more than 32 virtual cores). For computations use hpc flavors. 
+    type: string
+    default: standard.small
+    constraints: 
+      - allowed_values:
+        - standard.tiny
+        - standard.small
+        - standard.medium
+        - standard.large
+        - standard.xlarge
+        - standard.xxlarge
+        - gpu.1.1gpu
+        - gpu.1.2gpu
+        - hpc-gen2.24core
+        - hpc-gen2.48core
+        - hpc.4.5core
+        - hpc.4.20core
+        - hpc.4.10core
+        - hpc.4.40core
+        - io.70GB
+        - io.160GB
+        - io.340GB
+        - io.700GB
+
+  image:
+    type: string
+    default: Ubuntu-16.04
+    constraints: 
+      - allowed_values:
+        - Ubuntu-16.04
+        - Ubuntu-16.04-Cuda
+        - cirros
+
+
+
+resources:
+
+
+  # this create a floating ip 
+  floating_ip:
+    type: OS::Nova::FloatingIP
+    properties:
+      pool: public
+
+  # this associates security groups to the port
+  instance_port:
+    type: OS::Neutron::Port
+    properties:
+      network: project_2000774
+      security_groups:
+        - default
+        - SSH
+        - Jupyter
+
+  # this creates a key-pair
+  #my_key:
+  #  type: OS::Nova::KeyPair
+  #  properties:
+  #    save_private_key: true
+  #    name: my_key  
+
+  default_instance:
+    # this creates the actual instance
+    type: OS::Nova::Server
+    properties:
+      key_name: { get_param: key_name }
+      image: { get_param: image}
+      flavor: { get_param: flavor }
+      networks:
+        - port: { get_resource: instance_port }
+
+  association:
+    # this associates floating ip with the created instance
+    type: OS::Nova::FloatingIPAssociation
+    properties:
+      floating_ip: { get_resource: floating_ip }
+      server_id: { get_resource: default_instance }
+
+outputs:
+#  private_key: 
+#    description: Private key
+#    value: { get_attr: [ my_key, private_key ] }
+  instance_ip:
+    description: Floating IP to be used for ssh'ing to the box
+    value: { get_attr: [default_instance, networks, project_2000774, 1] }
+  ssh_command:
+    description: SSH command for the newly created instance (assuming your key is in ~/.ssh/). The keys are generated using -> openstack keypair create HEAT_KEY > ~/.ssh/HEAT_KEY.private
+
+    value:
+        str_replace:
+            template: ssh cloud-user@host -i ~/.ssh/key.private
+            params:
+                host: { get_attr: [default_instance, networks, project_2000774, 1] }
+                key: { get_param: key_name }
+
+
+

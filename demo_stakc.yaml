@@ -144,7 +144,7 @@ resources:
             runcmd:
               - /tmp/format-disks            
           params:
-            "%voldata_id1%": { get_resource: existing_volume }
+            "%voldata_id1%": { get_param: existing_volume }
             "%token%": { get_param: jupyter_token }
             "%notebook%": { get_param: notebook }
 
