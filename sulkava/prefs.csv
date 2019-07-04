@@ -1,16 +1,16 @@
-name	height [cm]	weight [kg]
-Tiia	166.0	55.0
-Alison	164.0	64.0
-Bulat	174.0	79.0
-Arvydas	181.0	77.0
-Julia	175.0	70.0
-Lauri	170.0	65.0
-Tatiana	169.0	55.5
-Ulrika	169.0	64.5
-Karen	173.5	67.5
-Hans	179.0	73.0
-Jaana	167.0	62.0
-Joseph	170.0	65.0
-Elli	163.0	60.0
-Elina	165.0	55.0
-Kul	157.0	64.0
+cox;name;height [cm];weight [kg];notes
+1;tiia;166;55;rower/white oar, can cox 1/4
+0;alison;164;64.1;Rower
+0;bulat;174;79;
+1;arvydas;181;77;Cox, white
+1;julia;175;70;I usually do worse in the last two rows because of the space. I want to be white oar for one cuarter or two of the race (if two not on the same day), and I can cox like my life depends on it. Other than those times I like the 3rd and 4th row so everyone hears me sing.
+0;lauri;170;65.1;
+0;tatiana;169;55.5;rower or white oar if needed
+0;ulrika;169.1;64.5;Rower or white if needed
+1;karen;173.5;67.5;Rower 1st/2nd row, white oar (if needed), also coxing max 1/4 of the race (if needed)
+0;hans;179;73;
+0;jaana;167;62;want to change sides in every swich
+0;joseph;170.1;65;
+0;elli;163;60;
+0;elina;165;55.1;Rower in the front part of the boat
+0;kul;157;64;
