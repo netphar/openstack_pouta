@@ -1,0 +1,4 @@
+tutorial for branching, that results in creation of with_weights branch or whatever it is called was taken from https://github.com/Kunena/Kunena-Forum/wiki/Create-a-new-branch-with-git-and-manage-branches
+
+to compare branches use git diff
+git diff master adding_balancing_by_weights

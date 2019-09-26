@@ -1,0 +1,207 @@
+heat_template_version: 2016-10-14
+
+description: >
+  This will be used to test CatBoost and other categorical variable encoding features
+  more info on ansible cluster deployment -> https://github.com/CSCfi/pouta-ansible-cluster
+
+parameters:
+  key_name:
+    type: string
+    default: HEAT_KEY
+    description: Name of an existing (on the csc) key pair to use for the instance
+  jupyter_token:
+    type: string
+    default: 'doctoral-school'
+    description: Jupyer token string, which can be used to access the container
+  flavor:
+    description: https://research.csc.fi/pouta-flavours for more info on flavors. io for spark/hadoop. Standard for webstuff and db, as cpu is overcommited (32 physical cores are used to provide more than 32 virtual cores). For computations use hpc flavors. 
+    type: string
+    default: hpc.4.10core
+    constraints: 
+      - allowed_values:
+        - standard.tiny
+        - standard.small
+        - standard.medium
+        - standard.large
+        - standard.xlarge
+        - standard.xxlarge
+        - gpu.1.1gpu
+        - gpu.1.2gpu
+        - hpc-gen2.24core
+        - hpc-gen2.48core
+        - hpc.4.5core
+        - hpc.4.20core
+        - hpc.4.10core
+        - hpc.4.40core
+        - hpc.4.80core
+        - io.70GB
+        - io.160GB
+        - io.340GB
+        - io.700GB
+
+  image:
+    type: string
+    default: Ubuntu-16.04
+    constraints: 
+      - allowed_values:
+        - Ubuntu-16.04
+        - Ubuntu-16.04-Cuda
+        - cirros
+  notebook:
+    description: available are here https://jupyter-docker-stacks.readthedocs.io/en/latest/using/selecting.html#jupyter-datascience-notebook
+    type: string
+    default: "jupyter/tensorflow-notebook"
+    constraints:
+      - allowed_values:
+        - jupyter/base-notebook
+        - jupyter/minimal-notebook
+        - jupyter/r-notebook
+        - jupyter/scipy-notebook
+        - jupyter/datascience-notebook
+        - jupyter/tensorflow-notebook
+
+
+  existing_volume:
+    description: >
+      attaches an existing volume. Default is 50 Gb file with RDKit stuff
+      Make sure the new volume is formatted before use. 
+      sudo -umount (output of sudo parted -l)
+      Check existing volumes with `openstack volume list`
+    type: string
+    default: b6f84586-aa6c-4782-9826-99606f284379
+    constraints:
+      - allowed_values:
+        - b6f84586-aa6c-4782-9826-99606f284379
+        - 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
+        - 07535119-868c-479c-a37a-52868967549a
+
+
+
+
+
+resources:
+
+        
+# sudo mkfs.ext4 ${some_input}
+# sudo mkdir -p /media/volume
+# sudo mount ${some_input} /media/volume
+# sudo mkdir -p /media/volume/IT_WORKED && sudo chown -R $USER /media/volume/IT_WORKED
+
+  # this creates a new volume
+
+
+  # this create a floating ip 
+  floating_ip:
+    type: OS::Nova::FloatingIP
+    properties:
+      pool: public
+
+  # this associates security groups to the port
+  instance_port:
+    type: OS::Neutron::Port
+    properties:
+      network: project_2000774
+      security_groups:
+        - default
+        - SSH
+        - Jupyter
+
+  # this creates a key-pair
+  #my_key:
+  #  type: OS::Nova::KeyPair
+  #  properties:
+  #    save_private_key: true
+  #    name: my_key  
+
+  default_instance:
+    # this creates the actual instance
+    type: OS::Nova::Server
+    properties:
+      key_name: { get_param: key_name }
+      image: { get_param: image}
+      flavor: { get_param: flavor }
+      networks:
+        - port: { get_resource: instance_port }
+      user_data_format: RAW
+      user_data:
+        # https://docs.openstack.org/heat/newton/template_guide/hot_spec.html#str-replace
+        # https://webcache.googleusercontent.com/search?q=cache:IVrJbDeZ344J:https://www.cowley.tech/blog/2015/05/05/identify-and-mounting-cinder-volumes-in-openstack-heat/+&cd=1&hl=en&ct=clnk&gl=fi&client=safari
+        # -e option for passwords obtained from https://hub.docker.com/r/vhtec/jupyter-docker/ and from https://blog.ouseful.info/2019/02/05/on-not-faffing-around-with-jupyter-docker-container-auth-tokens/
+        # let's have all the external to script variables written out as "%variable%"
+        #  WITH JUPYTERLAB sudo docker run --rm -p 8888:8888 -e JUPYTER_ENABLE_LAB=yes -v /media/input:/home/jovyan/persistentDir -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
+
+        str_replace:
+          template: |
+            #cloud-config
+            write_files:
+              - content: |
+                  #!/bin/bash
+                  set -xv
+                  mkdir -pv /media/input
+                  voldata_id1="%voldata_id1%"
+                  voldata_dev1="/dev/disk/by-id/virtio-$(echo ${voldata_id1} | cut -c -20)"
+                  mount ${voldata_dev1} /media/input
+                  chmod a+rwx -R /media/input
+                  curl -fsSL https://get.docker.com -o get-docker.sh
+                  sh get-docker.sh
+                  wait
+                  TOKEN="%token%"
+                  NOTEBOOK="%notebook%"
+                  sudo docker run --rm -p 8888:8888 -v /media/input:/home/jovyan/persistentDir -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
+                path: /tmp/format-disks
+                permissions: '0700'
+            runcmd:
+              - /tmp/format-disks            
+          params:
+            "%voldata_id1%": { get_param: existing_volume }
+            "%token%": { get_param: jupyter_token }
+            "%notebook%": { get_param: notebook }
+
+
+
+
+
+  volume_attachment_old:
+    description: this should contain input data for whatever calculation to be run from DrugComb
+    type: OS::Cinder::VolumeAttachment
+    properties:
+      volume_id: { get_param: existing_volume }
+      instance_uuid: { get_resource: default_instance }
+#      mountpoint: /dev/vdc # mountpoint does not work. It assigns it at random
+# https://ask.openstack.org/en/question/81702/nova-volume-attach-with-device-option-not-honoring-given-device-name/
+
+  
+  association:
+    # this associates floating ip with the created instance
+    type: OS::Nova::FloatingIPAssociation
+    properties:
+      floating_ip: { get_resource: floating_ip }
+      server_id: { get_resource: default_instance }
+
+outputs:
+#  private_key: 
+#    description: Private key
+#    value: { get_attr: [ my_key, private_key ] }
+  instance_ip:
+    description: Floating IP to be used for ssh'ing to the box
+    value: { get_attr: [default_instance, networks, project_2000774, 1] }
+  ssh_command:
+    description: SSH command for the newly created instance (assuming your key is in ~/.ssh/). The keys are generated using -> openstack keypair create HEAT_KEY > ~/.ssh/HEAT_KEY.private
+
+    value:
+        str_replace:
+            template: ssh cloud-user@host -i ~/.ssh/key.private
+            params:
+                host: { get_attr: [default_instance, networks, project_2000774, 1] }
+                key: { get_param: key_name }
+  web_address:
+    description: Link to access Jupyter instance from the browser.
+
+    value:
+        str_replace:
+            template: http://host:8888/?token=jupyter_token
+            params:
+                host: { get_attr: [default_instance, networks, project_2000774, 1] }
+                jupyter_token: { get_param: jupyter_token }
+
+

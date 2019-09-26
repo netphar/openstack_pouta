@@ -1,0 +1,100 @@
+  477  openstack volume list
+  478  git
+  479  ssh cloud-user@193.166.24.94 -i ~/.ssh/HEAT_KEY.private
+  480  openstack stack show GATK
+  481  openstack stack show GATK
+  482  openstack stack list
+  483  openstack stack delete GATK
+  484  conda env list
+  485  conda env list
+  486  source activate pouta
+  487  source ~/.pouta/project_2000774-openrc.sh 
+  488  openstack stack list
+  489  openstack stack show SULAKVA
+  490  openstack stack show SULKAVA
+  491  openstack floating-ip list
+  492  openstack floating ip list
+  493  openstack floating ip show e31d98a6-4877-447e-a053-5801fe5cb335
+  494  openstack floating ip show fec0fc00-ef3c-4e3a-9a4a-50b7266dd2a9
+  495  openstack floating ip delete e31d98a6-4877-447e-a053-5801fe5cb335
+  496  ssh cloud-user@193.166.24.22 -i ~/.ssh/HEAT_KEY.private
+  497  cd ..
+  498  ls
+  499  git status
+  500  git add *
+  501  git status
+  502  git commit -m "adding sulkava seating problem"
+  503  git push -u origin master
+  504  cd -
+  505  git rm Untitled*
+  506  git commit -m "remove unneeded files"
+  507  git push -u origin master
+  508  cd ..
+  509  git add *
+  510  git commit -m "adding view state"
+  511  git push -u origin master
+  512  git add *
+  513  git commit -m "adding hyperlinks"
+  514  git push -u origin master
+  515  git add *
+  516  git commit -m "again, view states"
+  517  git push -u origin master
+  518  git status
+  519  git status
+  520  git add *
+  521  git commit -m "pdf"
+  522  git push -u origin master
+  523  git add *
+  524  git commit -m "html"
+  525  git push -u origin master
+  526  cd ~/Downloads/
+  527  ls -t | head -1
+  528  mv sulkava_seating.html ~/Documents/fimm_files/openstack_csc/sulkava/
+  529  cd -
+  530  ls
+  531  cd sulkava/
+  532  ls
+  533  git add sulkava_seating.html 
+  534  git commit -m "commit"
+  535  git push origin master
+  536  cd ..
+  537  git rm sulkava/sulkava_seating.ipynb 
+  538  git rm sulkava/sulkava_seating.html 
+  539  git rm sulkava/notebook.tex 
+  540  git commit -m "cleanup"
+  541  git push -u origin master
+  542  git status
+  543  git add *
+  544  git commit -m "something"
+  545  git push -u origin master
+  546  git add *
+  547  git commit -m "smh"
+  548  git push -u origin master
+  549  cd ~/Documents/fimm_files/
+  550  sgc
+  551  cd -
+  552  git status
+  553  git add *
+  554  git status
+  555  git commit -m "with working ranking by heights"
+  556  git push -u origin master
+  557  git status
+  558  git checkout -b "adding balancing by weights"
+  559  git checkout -b [adding balancing by weights]
+  560  git checkout -b [adding_balancing_by_weights]
+  561  git checkout -b adding_balancing_by_weights
+  562  git push -u origin adding_balancing_by_weights
+  563  git branch -a
+  564  git remote add remotes/origin/adding_balancing_by_weights adding_balancing_by_weights
+  565  git branch -a
+  566  git branch -a
+  567  git status
+  568  git add *
+  569  git commit -m "weight balancing is calculated"
+  570  git push -u adding_balancing_by_weights remotes/origin/adding_balancing_by_weights
+  571  git status
+  572  git push -u  adding_balancing_by_weights origin/adding_balancing_by_weights
+  573  git push -u  
+  574  history
+  575  history | tail -100
+  576  history | tail -100 > terminal_log_from_JupLab.logfile
