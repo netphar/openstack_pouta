@@ -1,8 +1,7 @@
 heat_template_version: 2016-10-14
 
 description: >
-  This will be used to test CatBoost and other categorical variable encoding features
-  more info on ansible cluster deployment -> https://github.com/CSCfi/pouta-ansible-cluster
+  This is for testing TF + Keras without the Docker. This is 1 GPU, Ubuntu16.04-Cuda and without any jupyter  
 
 parameters:
   key_name:
@@ -16,7 +15,7 @@ parameters:
   flavor:
     description: https://research.csc.fi/pouta-flavours for more info on flavors. io for spark/hadoop. Standard for webstuff and db, as cpu is overcommited (32 physical cores are used to provide more than 32 virtual cores). For computations use hpc flavors. 
     type: string
-    default: hpc.4.10core
+    default: gpu.1.1gpu
     constraints: 
       - allowed_values:
         - standard.tiny
@@ -41,7 +40,7 @@ parameters:
 
   image:
     type: string
-    default: Ubuntu-16.04
+    default: Ubuntu-16.04-Cuda
     constraints: 
       - allowed_values:
         - Ubuntu-16.04
@@ -50,7 +49,7 @@ parameters:
   notebook:
     description: available are here https://jupyter-docker-stacks.readthedocs.io/en/latest/using/selecting.html#jupyter-datascience-notebook
     type: string
-    default: "jupyter/tensorflow-notebook"
+    default: "jupyter/scipy-notebook"
     constraints:
       - allowed_values:
         - jupyter/base-notebook
@@ -142,12 +141,13 @@ resources:
                   voldata_dev1="/dev/disk/by-id/virtio-$(echo ${voldata_id1} | cut -c -20)"
                   mount ${voldata_dev1} /media/input
                   chmod a+rwx -R /media/input
-                  curl -fsSL https://get.docker.com -o get-docker.sh
-                  sh get-docker.sh
-                  wait
-                  TOKEN="%token%"
-                  NOTEBOOK="%notebook%"
-                  sudo docker run --rm -p 8888:8888 -v /media/input:/home/jovyan/persistentDir -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
+                  # NO DOCKER INSTALLATION
+		  # curl -fsSL https://get.docker.com -o get-docker.sh
+                  # sh get-docker.sh
+                  # wait
+                  # TOKEN="%token%"
+                  # NOTEBOOK="%notebook%"
+                  # sudo docker run --rm -p 8888:8888 -e JUPYTER_ENABLE_LAB=yes -v /media/input:/home/jovyan/persistentDir -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
                 path: /tmp/format-disks
                 permissions: '0700'
             runcmd:
@@ -194,14 +194,14 @@ outputs:
             params:
                 host: { get_attr: [default_instance, networks, project_2000774, 1] }
                 key: { get_param: key_name }
-  web_address:
-    description: Link to access Jupyter instance from the browser.
-
-    value:
-        str_replace:
-            template: http://host:8888/?token=jupyter_token
-            params:
-                host: { get_attr: [default_instance, networks, project_2000774, 1] }
-                jupyter_token: { get_param: jupyter_token }
+#  web_address:
+#    description: Link to access Jupyter instance from the browser.
+#
+#    value:
+#        str_replace:
+#            template: http://host:8888/?token=jupyter_token
+#            params:
+#                host: { get_attr: [default_instance, networks, project_2000774, 1] }
+#                jupyter_token: { get_param: jupyter_token }
 
 
