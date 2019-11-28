@@ -1,8 +1,7 @@
 heat_template_version: 2016-10-14
 
 description: >
-  This will be used to test CatBoost and other categorical variable encoding features
-  more info on ansible cluster deployment -> https://github.com/CSCfi/pouta-ansible-cluster
+  This is a GPUless cPOUTA instance
 
 parameters:
   key_name:
@@ -69,7 +68,7 @@ parameters:
       sudo -umount (output of sudo parted -l)
       Check existing volumes with `openstack volume list`
     type: string
-    default: b6f84586-aa6c-4782-9826-99606f284379
+    default: 4539dfbb-6939-476a-a1a5-8950c2875552
     constraints:
       - allowed_values:
         - b6f84586-aa6c-4782-9826-99606f284379
@@ -77,19 +76,19 @@ parameters:
         - 07535119-868c-479c-a37a-52868967549a
         - 4539dfbb-6939-476a-a1a5-8950c2875552
 
-  sec_existing_volume:
-    description: >
-      attaches an existing volume of 500 Gb
-      sudo -umount (output of sudo parted -l)
-      Check existing volumes with `openstack volume list`
-    type: string
-    default: 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
-    constraints:
-      - allowed_values:
-        - b6f84586-aa6c-4782-9826-99606f284379
-        - 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
-        - 07535119-868c-479c-a37a-52868967549a
-        - 4539dfbb-6939-476a-a1a5-8950c2875552
+#  sec_existing_volume:
+#    description: >
+#      attaches an existing volume of 500 Gb
+#      sudo -umount (output of sudo parted -l)
+#      Check existing volumes with `openstack volume list`
+#    type: string
+#    default: 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
+#    constraints:
+#      - allowed_values:
+#        - b6f84586-aa6c-4782-9826-99606f284379
+#       - 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
+#        - 07535119-868c-479c-a37a-52868967549a
+#        - 4539dfbb-6939-476a-a1a5-8950c2875552
 
 
 
@@ -156,22 +155,16 @@ resources:
                   #!/bin/bash
                   set -xv
                   mkdir -pv /media/input                  
-                  mkdir -pv /media/a_joke
-
                   voldata_id1="%voldata_id1%"
-                  voldata_id2="%voldata_id2%"
                   voldata_dev1="/dev/disk/by-id/virtio-$(echo ${voldata_id1} | cut -c -20)"
-                  voldata_dev2="/dev/disk/by-id/virtio-$(echo ${voldata_id2} | cut -c -20)"
-                  mount ${voldata_dev2} /media/a_joke  
                   mount ${voldata_dev1} /media/input
                   chmod a+rwx -R /media/input
-                  chmod a+rwx -R /media/a_joke 
                   curl -fsSL https://get.docker.com -o get-docker.sh
                   sh get-docker.sh
                   wait
                   TOKEN="%token%"
                   NOTEBOOK="%notebook%"
-                  sudo docker run -d --user root -p 8888:8888 -e JUPYTER_ENABLE_LAB=no -v /media/input:/home/jovyan/persistentDir -v /media/a_joke:/home/jovyan/persistentDir_big -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
+                  sudo docker run -d --user root -p 8888:8888 -e JUPYTER_ENABLE_LAB=yes -v /media/input:/home/jovyan/persistentDir -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
                 path: /tmp/format-disks
                 permissions: '0700'
             runcmd:
@@ -180,7 +173,6 @@ resources:
             "%voldata_id1%": { get_param: existing_volume }
             "%token%": { get_param: jupyter_token }
             "%notebook%": { get_param: notebook }
-            "%voldata_id2": { get_param: sec_existing_volume }
 
 
 
@@ -195,12 +187,12 @@ resources:
 #      mountpoint: /dev/vdc # mountpoint does not work. It assigns it at random
 # https://ask.openstack.org/en/question/81702/nova-volume-attach-with-device-option-not-honoring-given-device-name/
 
-  volume_attachment_big:
-    description: i dont remember what this does
-    type: OS::Cinder::VolumeAttachment
-    properties:
-      volume_id: { get_param: sec_existing_volume }
-      instance_uuid: { get_resource: default_instance }
+#  volume_attachment_big:
+#    description: i dont remember what this does
+#    type: OS::Cinder::VolumeAttachment
+#    properties:
+#      volume_id: { get_param: sec_existing_volume }
+#      instance_uuid: { get_resource: default_instance }
 #      mountpoint: /dev/vdc # mountpoint does not work. It assigns it at random
 # https://ask.openstack.org/en/question/81702/nova-volume-attach-with-device-option-not-honoring-given-device-name/
   
