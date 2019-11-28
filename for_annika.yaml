@@ -1,8 +1,7 @@
 heat_template_version: 2016-10-14
 
 description: >
-  This will be used to test CatBoost and other categorical variable encoding features
-  more info on ansible cluster deployment -> https://github.com/CSCfi/pouta-ansible-cluster
+  This is for annika, 15 Oct 2019
 
 parameters:
   key_name:
@@ -11,12 +10,12 @@ parameters:
     description: Name of an existing (on the csc) key pair to use for the instance
   jupyter_token:
     type: string
-    default: 'doctoral-school'
+    default: 'for-annika'
     description: Jupyer token string, which can be used to access the container
   flavor:
     description: https://research.csc.fi/pouta-flavours for more info on flavors. io for spark/hadoop. Standard for webstuff and db, as cpu is overcommited (32 physical cores are used to provide more than 32 virtual cores). For computations use hpc flavors. 
     type: string
-    default: hpc.4.40core
+    default: hpc.4.10core
     constraints: 
       - allowed_values:
         - standard.tiny
@@ -50,7 +49,7 @@ parameters:
   notebook:
     description: available are here https://jupyter-docker-stacks.readthedocs.io/en/latest/using/selecting.html#jupyter-datascience-notebook
     type: string
-    default: "jupyter/scipy-notebook"
+    default: "jupyter/datascience-notebook"
     constraints:
       - allowed_values:
         - jupyter/base-notebook
@@ -68,12 +67,13 @@ parameters:
       sudo -umount (output of sudo parted -l)
       Check existing volumes with `openstack volume list`
     type: string
-    default: b6f84586-aa6c-4782-9826-99606f284379
+    default: 665c9e6f-e2fd-4924-bc09-35fb57fb0286
     constraints:
       - allowed_values:
         - b6f84586-aa6c-4782-9826-99606f284379
         - 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
         - 07535119-868c-479c-a37a-52868967549a
+        - 665c9e6f-e2fd-4924-bc09-35fb57fb0286
 
 
 
@@ -129,6 +129,8 @@ resources:
         # -e option for passwords obtained from https://hub.docker.com/r/vhtec/jupyter-docker/ and from https://blog.ouseful.info/2019/02/05/on-not-faffing-around-with-jupyter-docker-container-auth-tokens/
         # let's have all the external to script variables written out as "%variable%"
         #  WITH JUPYTERLAB sudo docker run --rm -p 8888:8888 -e JUPYTER_ENABLE_LAB=yes -v /media/input:/home/jovyan/persistentDir -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
+        # TOKEN="for-annika"
+        # NOTEBOOK="jupyter/datascience-notebook"
 
         str_replace:
           template: |
@@ -147,7 +149,7 @@ resources:
                   wait
                   TOKEN="%token%"
                   NOTEBOOK="%notebook%"
-                  sudo docker run --rm -p 8888:8888 -v /media/input:/home/jovyan/persistentDir -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
+                  sudo docker run --rm -p 8888:8888 -e JUPYTER_ENABLE_LAB=yes -v /media/input:/home/jovyan/persistentDir -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
                 path: /tmp/format-disks
                 permissions: '0700'
             runcmd:

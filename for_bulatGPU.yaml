@@ -1,8 +1,11 @@
 heat_template_version: 2016-10-14
 
 description: >
-  This will be used to test CatBoost and other categorical variable encoding features
-  more info on ansible cluster deployment -> https://github.com/CSCfi/pouta-ansible-cluster
+  This will be used to test CatBoost and simple NNs. 
+  1 Tesla v100 is available
+  using tensorflow:latest-gpu-py3-jupyter
+  todo: add a version to the docker image
+        create system snapshot not to run the dl every time the instance is spinned up
 
 parameters:
   key_name:
@@ -11,12 +14,12 @@ parameters:
     description: Name of an existing (on the csc) key pair to use for the instance
   jupyter_token:
     type: string
-    default: 'doctoral-school'
+    default: 'for-bulatGPU'
     description: Jupyer token string, which can be used to access the container
   flavor:
     description: https://research.csc.fi/pouta-flavours for more info on flavors. io for spark/hadoop. Standard for webstuff and db, as cpu is overcommited (32 physical cores are used to provide more than 32 virtual cores). For computations use hpc flavors. 
     type: string
-    default: hpc.4.40core
+    default: gpu.1.1gpu
     constraints: 
       - allowed_values:
         - standard.tiny
@@ -41,16 +44,17 @@ parameters:
 
   image:
     type: string
-    default: Ubuntu-16.04
+    default: Ubuntu-16.04-Cuda
     constraints: 
       - allowed_values:
         - Ubuntu-16.04
         - Ubuntu-16.04-Cuda
         - cirros
+        - Ubuntu-18.04
   notebook:
     description: available are here https://jupyter-docker-stacks.readthedocs.io/en/latest/using/selecting.html#jupyter-datascience-notebook
     type: string
-    default: "jupyter/scipy-notebook"
+    default: "tensorflow/tensorflow:latest-gpu-py3-jupyter"
     constraints:
       - allowed_values:
         - jupyter/base-notebook
@@ -59,21 +63,37 @@ parameters:
         - jupyter/scipy-notebook
         - jupyter/datascience-notebook
         - jupyter/tensorflow-notebook
+        - tensorflow/tensorflow:latest-gpu-py3-jupyter
 
 
-  existing_volume:
+#  existing_volume:
+#    description: >
+#      attaches an existing volume. Default is 50 Gb file with RDKit stuff
+#      Make sure the new volume is formatted before use. 
+#      sudo -umount (output of sudo parted -l)
+#      Check existing volumes with `openstack volume list`
+#    type: string
+#    default: b6f84586-aa6c-4782-9826-99606f284379
+#    constraints:
+#      - allowed_values:
+#        - b6f84586-aa6c-4782-9826-99606f284379
+#        - 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
+#        - 07535119-868c-479c-a37a-52868967549a
+#        - 4539dfbb-6939-476a-a1a5-8950c2875552
+#
+  sec_existing_volume:
     description: >
-      attaches an existing volume. Default is 50 Gb file with RDKit stuff
-      Make sure the new volume is formatted before use. 
+      attaches an existing volume of 500 Gb
       sudo -umount (output of sudo parted -l)
       Check existing volumes with `openstack volume list`
     type: string
-    default: b6f84586-aa6c-4782-9826-99606f284379
+    default: 4539dfbb-6939-476a-a1a5-8950c2875552
     constraints:
       - allowed_values:
         - b6f84586-aa6c-4782-9826-99606f284379
         - 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
         - 07535119-868c-479c-a37a-52868967549a
+        - 4539dfbb-6939-476a-a1a5-8950c2875552
 
 
 
@@ -129,7 +149,12 @@ resources:
         # -e option for passwords obtained from https://hub.docker.com/r/vhtec/jupyter-docker/ and from https://blog.ouseful.info/2019/02/05/on-not-faffing-around-with-jupyter-docker-container-auth-tokens/
         # let's have all the external to script variables written out as "%variable%"
         #  WITH JUPYTERLAB sudo docker run --rm -p 8888:8888 -e JUPYTER_ENABLE_LAB=yes -v /media/input:/home/jovyan/persistentDir -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
-
+        # TOKEN='for-bulatGPU'
+        # NOTEBOOK='tensorflow/tensorflow:latest-gpu-py3-jupyter'
+        # TOKEN="%token%"
+        # NOTEBOOK="%notebook%"
+        # sudo docker run --rm --user root -p 8888:8888 -e JUPYTER_ENABLE_LAB=yes -v /media/input:/home/jovyan/persistentDir -v /media/input_big:/home/jovyan/persistentDir_big -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
+        # mb it is possible to run a single gpu, and that s enough. Else i restrict the number of gpu by changing "gpu -all" vs "gpu 1"
         str_replace:
           template: |
             #cloud-config
@@ -137,39 +162,54 @@ resources:
               - content: |
                   #!/bin/bash
                   set -xv
-                  mkdir -pv /media/input
-                  voldata_id1="%voldata_id1%"
-                  voldata_dev1="/dev/disk/by-id/virtio-$(echo ${voldata_id1} | cut -c -20)"
-                  mount ${voldata_dev1} /media/input
-                  chmod a+rwx -R /media/input
+                  mkdir -pv /media/input_big
+
+                  voldata_id2="%voldata_id2%"
+                  voldata_dev2="/dev/disk/by-id/virtio-$(echo ${voldata_id2} | cut -c -20)"
+                  mount ${voldata_dev2} /media/input_big  
+                  chmod a+rwx -R /media/input_big 
                   curl -fsSL https://get.docker.com -o get-docker.sh
                   sh get-docker.sh
                   wait
+                  distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+                  curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+                  curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+                  sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
+                  sudo systemctl restart docker
+                  wait
                   TOKEN="%token%"
                   NOTEBOOK="%notebook%"
-                  sudo docker run --rm -p 8888:8888 -v /media/input:/home/jovyan/persistentDir -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
+                  sudo docker run -d --gpus all --user root -p 8888:8888  -v /media/input_big:/tf/notebooks -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
                 path: /tmp/format-disks
                 permissions: '0700'
             runcmd:
               - /tmp/format-disks            
           params:
-            "%voldata_id1%": { get_param: existing_volume }
             "%token%": { get_param: jupyter_token }
             "%notebook%": { get_param: notebook }
+            "%voldata_id2": { get_param: sec_existing_volume }
 
 
 
 
 
-  volume_attachment_old:
-    description: this should contain input data for whatever calculation to be run from DrugComb
-    type: OS::Cinder::VolumeAttachment
-    properties:
-      volume_id: { get_param: existing_volume }
-      instance_uuid: { get_resource: default_instance }
+#  volume_attachment_old:
+#    description: this should contain input data for whatever calculation to be run from DrugComb
+#    type: OS::Cinder::VolumeAttachment
+#    properties:
+#      volume_id: { get_param: existing_volume }
+#      instance_uuid: { get_resource: default_instance }
 #      mountpoint: /dev/vdc # mountpoint does not work. It assigns it at random
 # https://ask.openstack.org/en/question/81702/nova-volume-attach-with-device-option-not-honoring-given-device-name/
 
+  volume_attachment_big:
+    description: i dont remember what this does
+    type: OS::Cinder::VolumeAttachment
+    properties:
+      volume_id: { get_param: sec_existing_volume }
+      instance_uuid: { get_resource: default_instance }
+#      mountpoint: /dev/vdc # mountpoint does not work. It assigns it at random
+# https://ask.openstack.org/en/question/81702/nova-volume-attach-with-device-option-not-honoring-given-device-name/
   
   association:
     # this associates floating ip with the created instance
