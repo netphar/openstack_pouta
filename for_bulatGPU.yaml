@@ -179,6 +179,8 @@ resources:
                   wait
                   TOKEN="%token%"
                   NOTEBOOK="%notebook%"
+                  docker build -t test /media/input_big/docker/
+                  NOTEBOOK=test
                   sudo docker run -d --gpus all --user root -p 8888:8888  -v /media/input_big:/tf/notebooks -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
                 path: /tmp/format-disks
                 permissions: '0700'
