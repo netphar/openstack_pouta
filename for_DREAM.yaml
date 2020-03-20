@@ -10,7 +10,7 @@ parameters:
     description: Name of an existing (on the csc) key pair to use for the instance
   jupyter_token:
     type: string
-    default: 'for-jehad'
+    default: 'for-dream'
     description: Jupyer token string, which can be used to access the container
   flavor:
     description: https://research.csc.fi/pouta-flavours for more info on flavors. io for spark/hadoop. Standard for webstuff and db, as cpu is overcommited (32 physical cores are used to provide more than 32 virtual cores). For computations use hpc flavors. 

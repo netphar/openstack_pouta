@@ -54,7 +54,7 @@ parameters:
   notebook:
     description: available are here https://jupyter-docker-stacks.readthedocs.io/en/latest/using/selecting.html#jupyter-datascience-notebook
     type: string
-    default: "tensorflow/tensorflow:latest-gpu-py3-jupyter"
+    default: "tensorflow/tensorflow:latest-gpu-jupyter"
     constraints:
       - allowed_values:
         - jupyter/base-notebook
@@ -63,7 +63,7 @@ parameters:
         - jupyter/scipy-notebook
         - jupyter/datascience-notebook
         - jupyter/tensorflow-notebook
-        - tensorflow/tensorflow:latest-gpu-py3-jupyter
+        - tensorflow/tensorflow:latest-gpu-jupyter
 
 
 #  existing_volume:
@@ -87,13 +87,14 @@ parameters:
       sudo -umount (output of sudo parted -l)
       Check existing volumes with `openstack volume list`
     type: string
-    default: 4539dfbb-6939-476a-a1a5-8950c2875552
+    default: 5952fc2c-d769-44f0-8178-332350e2167b
     constraints:
       - allowed_values:
         - b6f84586-aa6c-4782-9826-99606f284379
         - 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
         - 07535119-868c-479c-a37a-52868967549a
         - 4539dfbb-6939-476a-a1a5-8950c2875552
+        - 5952fc2c-d769-44f0-8178-332350e2167b
 
 
 
@@ -149,12 +150,13 @@ resources:
         # -e option for passwords obtained from https://hub.docker.com/r/vhtec/jupyter-docker/ and from https://blog.ouseful.info/2019/02/05/on-not-faffing-around-with-jupyter-docker-container-auth-tokens/
         # let's have all the external to script variables written out as "%variable%"
         #  WITH JUPYTERLAB sudo docker run --rm -p 8888:8888 -e JUPYTER_ENABLE_LAB=yes -v /media/input:/home/jovyan/persistentDir -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
-        # TOKEN='for-bulatGPU'
+        # TOKEN=for-bulatGPU
         # NOTEBOOK='tensorflow/tensorflow:latest-gpu-py3-jupyter'
         # TOKEN="%token%"
         # NOTEBOOK="%notebook%"
         # sudo docker run --rm --user root -p 8888:8888 -e JUPYTER_ENABLE_LAB=yes -v /media/input:/home/jovyan/persistentDir -v /media/input_big:/home/jovyan/persistentDir_big -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
         # mb it is possible to run a single gpu, and that s enough. Else i restrict the number of gpu by changing "gpu -all" vs "gpu 1"
+        # UPDATE March18. Here we are building an image locally with docker build. Instead of pulling it from the internet
         str_replace:
           template: |
             #cloud-config
@@ -179,9 +181,9 @@ resources:
                   wait
                   TOKEN="%token%"
                   NOTEBOOK="%notebook%"
-                  docker build -t test /media/input_big/docker/
+                  sudo docker build -t test /media/input_big/docker/
                   NOTEBOOK=test
-                  sudo docker run -d --gpus all --user root -p 8888:8888  -v /media/input_big:/tf/notebooks -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
+                  sudo docker run -d --gpus all --user root -p 8888:8888  -v /media/input_big:/tf/notebooks -e JUPYTER_ENABLE_LAB=yes -e JUPYTER_TOKEN=${TOKEN} ${NOTEBOOK}
                 path: /tmp/format-disks
                 permissions: '0700'
             runcmd:

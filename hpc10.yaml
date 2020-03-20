@@ -1,16 +1,16 @@
 heat_template_version: 2016-10-14
 
 description: >
-  This for clustering, for Jehad, 14 Oct 2019
+  This an HPC10 machine
 
 parameters:
   key_name:
     type: string
-    default: HEAT_KEY
+    default: HEAT_key2
     description: Name of an existing (on the csc) key pair to use for the instance
   jupyter_token:
     type: string
-    default: 'for-jehad'
+    default: 'test'
     description: Jupyer token string, which can be used to access the container
   flavor:
     description: https://research.csc.fi/pouta-flavours for more info on flavors. io for spark/hadoop. Standard for webstuff and db, as cpu is overcommited (32 physical cores are used to provide more than 32 virtual cores). For computations use hpc flavors. 
@@ -40,16 +40,17 @@ parameters:
 
   image:
     type: string
-    default: Ubuntu-16.04
+    default: Ubuntu-18.04
     constraints: 
       - allowed_values:
+        - Ubuntu-18.04
         - Ubuntu-16.04
         - Ubuntu-16.04-Cuda
         - cirros
   notebook:
     description: available are here https://jupyter-docker-stacks.readthedocs.io/en/latest/using/selecting.html#jupyter-datascience-notebook
     type: string
-    default: "jupyter/r-notebook"
+    default: "jupyter/base-notebook"
     constraints:
       - allowed_values:
         - jupyter/base-notebook
@@ -70,8 +71,6 @@ parameters:
     default: 07535119-868c-479c-a37a-52868967549a
     constraints:
       - allowed_values:
-        - b6f84586-aa6c-4782-9826-99606f284379
-        - 60cfa2f8-ae90-4edb-a7a0-0b873851b8c0
         - 07535119-868c-479c-a37a-52868967549a
 
 
@@ -189,7 +188,7 @@ outputs:
 
     value:
         str_replace:
-            template: ssh cloud-user@host -i ~/.ssh/key.private
+            template: ssh ubuntu@host -i ~/.ssh/key.private
             params:
                 host: { get_attr: [default_instance, networks, project_2000774, 1] }
                 key: { get_param: key_name }
